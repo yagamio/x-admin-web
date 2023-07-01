@@ -9,7 +9,7 @@
                     <el-button @click="getUserList" type="primary" round icon="el-icon-search">Search</el-button>
                 </el-col>
                 <el-col :span="4" align="right">
-                    <el-button @click="openEditUI" type="primary" icon="el-icon-plus" circle></el-button>
+                    <el-button @click="openEditUI(null)" type="primary" icon="el-icon-plus" circle></el-button>
                 </el-col>
             </el-row>
         </el-card>
@@ -37,7 +37,13 @@
                 </el-table-column>
                 <el-table-column prop="email" label="email">
                 </el-table-column>
-                <el-table-column label="Operate">
+                <el-table-column label="Operations">
+                    <template slot-scope="scope">
+                        <el-button @click="openEditUI(scope.row.id)" type="primary" icon="el-icon-edit" size="mini"
+                            circle></el-button>
+                        <el-button @click="deleteUser(scope.row)" type="danger" icon="el-icon-delete" size="mini"
+                            circle></el-button>
+                    </template>
                 </el-table-column>
             </el-table>
         </el-card>
@@ -54,7 +60,8 @@
                 <el-form-item label="Username" prop="username" :label-width="formLabelWidth">
                     <el-input v-model="userForm.username" autocomplete="off"></el-input>
                 </el-form-item>
-                <el-form-item label="Password" prop="password" :label-width="formLabelWidth">
+                <el-form-item v-if="userForm.id == null || userForm.id == undefined" label="Password" prop="password"
+                    :label-width="formLabelWidth">
                     <el-input type="password" v-model="userForm.password" autocomplete="off"></el-input>
                 </el-form-item>
                 <el-form-item label="Phone" :label-width="formLabelWidth">
@@ -116,12 +123,32 @@ export default {
         };
     },
     methods: {
+        deleteUser(user) {
+            this.$confirm(`Do you really want to delete user ${user.username} ?`, '提示', {
+                confirmButtonText: 'Confirm',
+                cancelButtonText: 'Cancel',
+                type: 'warning'
+            }).then(() => {
+                userApi.deleteUserById(user.id).then(response => {
+                    this.$message({
+                        type: 'success',
+                        message: response.message
+                    });
+                    this.getUserList();
+                });
+            }).catch(() => {
+                this.$message({
+                    type: 'info',
+                    message: 'Deletion cancelled'
+                });
+            });
+        },
         saveUser() {
             // 触发表单验证
             this.$refs.userFormRef.validate((valid) => {
                 if (valid) {
                     // 提交请求给后台
-                    userApi.addUser(this.userForm).then(response => {
+                    userApi.saveUser(this.userForm).then(response => {
                         // 成功提示
                         this.$message({
                             title: 'Success',
@@ -144,8 +171,16 @@ export default {
             this.userForm = {};
             this.$refs.userFormRef.clearValidate();
         },
-        openEditUI() {
-            this.title = 'Add new user';
+        openEditUI(id) {
+            if (id == null) {
+                this.title = "Add new user";
+            } else {
+                this.title = "Update user information";
+                // Access user data by ID
+                userApi.getUserById(id).then(response => {
+                    this.userForm = response.data;
+                });
+            }
             this.dialogFormVisible = true;
         },
         handleSizeChange(pageSize) {
